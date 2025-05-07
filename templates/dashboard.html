@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ company }} - Admin Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/style.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <header class="company-header">
+    <div class="container">
+      <h1><i class="fas fa-building"></i> {{ company }}</h1>
+      <p>Admin Dashboard</p>
+    </div>
+  </header>
+
+  <div class="admin-controls">
+    <div class="admin-info">
+      <span class="admin-welcome">
+        <i class="fas fa-user-circle"></i> Admin: {{ username }}
+      </span>
+      <span class="last-login">
+        <i class="fas fa-clock"></i> {{ current_time }}
+      </span>
+    </div>
+    <a href="/logout" class="btn btn-danger">
+      <i class="fas fa-sign-out-alt"></i> Logout
+    </a>
+  </div>
+
+  <main class="container admin-container">
+    <!-- Summary Cards -->
+    <div class="admin-summary">
+      <div class="summary-card total-feedback">
+        <h3><i class="fas fa-comments"></i> Total Feedback</h3>
+        <p>{{ feedback|length }}</p>
+      </div>
+      <div class="summary-card positive-feedback">
+        <h3><i class="fas fa-smile"></i> Positive</h3>
+        <p>{{ counts.Positive }}</p>
+      </div>
+      <div class="summary-card neutral-feedback">
+        <h3><i class="fas fa-meh"></i> Neutral</h3>
+        <p>{{ counts.Neutral }}</p>
+      </div>
+      <div class="summary-card negative-feedback">
+        <h3><i class="fas fa-frown"></i> Negative</h3>
+        <p>{{ counts.Negative }}</p>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="chart-row">
+      <div class="chart-container medium-chart">
+        <h3><i class="fas fa-chart-pie"></i> Sentiment Distribution</h3>
+        <canvas id="sentimentChart" height="250"></canvas>
+      </div>
+      <div class="chart-container medium-chart">
+        <h3><i class="fas fa-chart-line"></i> Recent Trend</h3>
+        <canvas id="trendChart" height="250"></canvas>
+      </div>
+    </div>
+
+    <!-- Feedback Management -->
+    <div class="admin-section">
+      <div class="section-header">
+        <h3><i class="fas fa-table"></i> Feedback Management</h3>
+      </div>
+      
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Product</th>
+              <th>Customer</th>
+              <th>Date</th>
+              <th>Sentiment</th>
+              <th>Feedback</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in feedback %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ item.product }}</td>
+              <td>{{ item.customer }}</td>
+              <td>{{ item.date }}</td>
+              <td>
+                <span class="sentiment-badge {{ item.sentiment.lower() }}">
+                  <i class="fas fa-{{ 'smile' if item.sentiment == 'Positive' else 'frown' if item.sentiment == 'Negative' else 'meh' }}"></i>
+                  {{ item.sentiment }}
+                </span>
+              </td>
+              <td class="feedback-text">{{ item.feedback[:50] }}{% if item.feedback|length > 50 %}...{% endif %}</td>
+              <td>
+                <button class="btn btn-sm btn-info view-btn" data-id="{{ loop.index }}">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- View Feedback Modal -->
+  <div class="modal fade" id="feedbackModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Feedback Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="feedback-details">
+            <p><strong>Product:</strong> <span id="modal-product"></span></p>
+            <p><strong>Customer:</strong> <span id="modal-customer"></span></p>
+            <p><strong>Date:</strong> <span id="modal-date"></span></p>
+            <p><strong>Sentiment:</strong> <span id="modal-sentiment"></span></p>
+            <div class="feedback-content">
+              <h6>Feedback:</h6>
+              <p id="modal-feedback"></p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Sentiment Chart - Medium Size
+    const sentimentCtx = document.getElementById('sentimentChart').getContext('2d');
+    new Chart(sentimentCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Positive', 'Neutral', 'Negative'],
+        datasets: [{
+          data: [{{ counts.Positive }}, {{ counts.Neutral }}, {{ counts.Negative }}],
+          backgroundColor: [
+            'rgba(40, 167, 69, 0.8)',
+            'rgba(255, 193, 7, 0.8)',
+            'rgba(220, 53, 69, 0.8)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    });
+
+    // Trend Chart - Medium Size
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    new Chart(trendCtx, {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [
+          {
+            label: 'Positive',
+            data: [12, 19, 15, 20, 18, 25],
+            borderColor: 'rgba(40, 167, 69, 0.8)',
+            backgroundColor: 'rgba(40, 167, 69, 0.2)',
+            tension: 0.3
+          },
+          {
+            label: 'Neutral',
+            data: [8, 10, 12, 9, 11, 8],
+            borderColor: 'rgba(255, 193, 7, 0.8)',
+            backgroundColor: 'rgba(255, 193, 7, 0.2)',
+            tension: 0.3
+          },
+          {
+            label: 'Negative',
+            data: [5, 3, 6, 4, 7, 2],
+            borderColor: 'rgba(220, 53, 69, 0.8)',
+            backgroundColor: 'rgba(220, 53, 69, 0.2)',
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    // View Feedback Modal
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const row = this.closest('tr');
+        document.getElementById('modal-product').textContent = row.cells[1].textContent;
+        document.getElementById('modal-customer').textContent = row.cells[2].textContent;
+        document.getElementById('modal-date').textContent = row.cells[3].textContent;
+        document.getElementById('modal-sentiment').textContent = row.cells[4].textContent;
+        document.getElementById('modal-feedback').textContent = row.cells[5].textContent;
+        
+        const modal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+        modal.show();
+      });
+    });
+  </script>
+</body>
+</html>
